@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "com.judiraal.irisblockcompat.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "irisblockcompat.mixin-refmap.json",
+  "mixins": [
+    "BlockMaterialMappingMixin"
+  ],
+  "minVersion": "0.8",
+  "client": [
+  ]
+}
