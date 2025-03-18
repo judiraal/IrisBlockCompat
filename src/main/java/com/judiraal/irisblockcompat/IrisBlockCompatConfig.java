@@ -37,19 +37,23 @@ public class IrisBlockCompatConfig {
     public static ModConfigSpec.ConfigValue<List<? extends String>> leavesBlocks;
     public static ModConfigSpec.ConfigValue<List<? extends String>> cropsBlocks;
     public static ModConfigSpec.ConfigValue<List<? extends String>> excludeBlocks;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> disabledDimensions;
     public static Lazy<Object2IntMap<BlockState>> compatBlockStates;
 
     private IrisBlockCompatConfig(final ModConfigSpec.Builder builder) {
         wavingBlocks = builder.comment("List of blocks and/or block tags that will be included as waving grass-like.")
-                .define("wavingBlocks", () -> Arrays.asList("#minecraft:sword_efficient", "farmersdelight:sandy_shrub"), value -> true);
+                .defineList("wavingBlocks", () -> Arrays.asList("#minecraft:sword_efficient", "farmersdelight:sandy_shrub"), () -> "", value -> true);
         leavesBlocks = builder.comment("List of blocks and/or block tags that will be included as leaves.")
-                .define("leavesBlocks", () -> Arrays.asList("#minecraft:leaves"), value -> true);
+                .defineList("leavesBlocks", () -> Arrays.asList("#minecraft:leaves"), () -> "", value -> true);
         cropsBlocks = builder.comment("List of blocks and/or block tags that will be included as crops.")
-                .define("cropsBlocks", () -> Arrays.asList(), value -> true);
+                .defineList("cropsBlocks", () -> Arrays.asList(""), () -> "", value -> true);
         excludeBlocks = builder.comment("List of blocks and/or block tags that will be excluded from the other lists.")
-                .define("excludeBlocks", () -> Arrays.asList("#minecraft:saplings",
+                .defineList("excludeBlocks", () -> Arrays.asList("#minecraft:saplings",
                         "minecraft:melon", "minecraft:pumpkin", "minecraft:carved_pumpkin",
-                        "minecraft:jack_o_lantern", "minecraft:chorus_plant", "minecraft:chorus_flower"), value -> true);
+                        "minecraft:jack_o_lantern", "minecraft:chorus_plant", "minecraft:chorus_flower"), () -> "", value -> true);
+        disabledDimensions = builder.comment("List of dimensions where shaders should not be used.")
+                .defineList("disabledDimensions", () -> Arrays.asList(
+                        "stellaris:moon", "stellaris:mars", "stellaris:venus", "stellaris:mercury"), () -> "", value -> true);
         compatBlockStates = Lazy.of(this::buildCompatBlockStates);
 
         builder.build();
