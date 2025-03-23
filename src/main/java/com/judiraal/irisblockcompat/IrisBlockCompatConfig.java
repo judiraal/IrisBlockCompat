@@ -1,5 +1,6 @@
 package com.judiraal.irisblockcompat;
 
+import com.google.common.collect.ImmutableMap;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.core.Registry;
@@ -15,10 +16,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.common.util.Lazy;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 import static net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF;
 
@@ -39,6 +37,8 @@ public class IrisBlockCompatConfig {
     public static ModConfigSpec.ConfigValue<List<? extends String>> excludeBlocks;
     public static ModConfigSpec.ConfigValue<List<? extends String>> disabledDimensions;
     public static Lazy<Object2IntMap<BlockState>> compatBlockStates;
+    public static Map<ResourceLocation, String> dimensionShaderPacks = ImmutableMap.of(
+            ResourceLocation.parse("minecraft:the_nether"), "superDuperVanilla.zip");
 
     private IrisBlockCompatConfig(final ModConfigSpec.Builder builder) {
         wavingBlocks = builder.comment("List of blocks and/or block tags that will be included as waving grass-like.")
@@ -57,6 +57,10 @@ public class IrisBlockCompatConfig {
         compatBlockStates = Lazy.of(this::buildCompatBlockStates);
 
         builder.build();
+    }
+
+    public static Optional<String> getDimensionShader(ResourceLocation location) {
+        return Optional.ofNullable(dimensionShaderPacks.get(location));
     }
 
     private <T extends String> List<Block> blockListToBlocks(List<T> blockList) {

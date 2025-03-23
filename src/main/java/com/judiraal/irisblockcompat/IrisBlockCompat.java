@@ -2,12 +2,16 @@ package com.judiraal.irisblockcompat;
 
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import org.slf4j.Logger;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.Optional;
 
 @Mod(IrisBlockCompat.MOD_ID)
 public class IrisBlockCompat {
@@ -21,5 +25,15 @@ public class IrisBlockCompat {
     public static void addCompatBlockIds(Object2IntMap<BlockState> blockIdMap) {
         IrisBlockCompatConfig.compatBlockStates.get().object2IntEntrySet()
                 .forEach(e -> blockIdMap.putIfAbsent(e.getKey(), e.getIntValue()));
+    }
+
+    public static void setDimensionShaderPack(CallbackInfoReturnable<Optional<String>> cir) {
+        Optional.ofNullable(Minecraft.getInstance().level).ifPresent(l -> {
+            Optional<String> shaderPackName = IrisBlockCompatConfig.getDimensionShader(l.dimension().location());
+            if (shaderPackName.isPresent()) {
+                if ("null".equalsIgnoreCase(shaderPackName.get())) cir.setReturnValue(Optional.empty());
+                else cir.setReturnValue(shaderPackName);
+            }
+        });
     }
 }

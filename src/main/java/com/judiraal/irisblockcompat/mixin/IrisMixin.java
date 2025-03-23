@@ -1,20 +1,46 @@
 package com.judiraal.irisblockcompat.mixin;
 
-import com.judiraal.irisblockcompat.IrisBlockCompatConfig;
-import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import com.llamalad7.mixinextras.sugar.Local;
 import net.irisshaders.iris.Iris;
+import net.irisshaders.iris.config.IrisConfig;
+import net.irisshaders.iris.pipeline.WorldRenderingPipeline;
 import net.irisshaders.iris.shaderpack.ShaderPack;
 import net.irisshaders.iris.shaderpack.materialmap.NamespacedId;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.Optional;
 
 @Mixin(Iris.class)
-public class IrisMixin {
-    @ModifyExpressionValue(method = "createPipeline", at = @At(value = "FIELD", target = "net/irisshaders/iris/Iris.currentPack:Lnet/irisshaders/iris/shaderpack/ShaderPack;"))
-    private static ShaderPack irisblockcompat$filterDimension(ShaderPack original, @Local(argsOnly = true) NamespacedId dimensionId) {
-        if (original == null) return null;
-        if (IrisBlockCompatConfig.disabledDimensions.get().contains(dimensionId.toString())) return null;
-        return original;
+public abstract class IrisMixin {
+    @Shadow
+    private static ShaderPack currentPack;
+    @Shadow
+    private static IrisConfig irisConfig;
+    @Shadow
+    private static String currentPackName;
+
+    @Shadow
+    private static void destroyEverything() {}
+
+    @Shadow
+    public static void loadShaderpack() {}
+
+    @Unique
+    private static void irisblockcompat$dimensionSpecificShader() {
+        destroyEverything();
+        loadShaderpack();
+    }
+
+    @Inject(method = "createPipeline", at = @At("HEAD"))
+    private static void irisblockcompat$filterDimension(NamespacedId dimensionId, CallbackInfoReturnable<WorldRenderingPipeline> cir) {
+        Optional<String> packName = irisConfig.getShaderPackName();
+        if (currentPack != null || packName.isPresent()) {
+            if (currentPack == null || packName.isEmpty()) irisblockcompat$dimensionSpecificShader();
+            else if (!packName.get().equals(currentPackName)) irisblockcompat$dimensionSpecificShader();
+        }
     }
 }

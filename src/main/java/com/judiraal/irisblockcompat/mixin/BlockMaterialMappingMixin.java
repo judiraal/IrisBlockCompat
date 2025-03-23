@@ -17,7 +17,7 @@ import java.util.List;
 @Mixin(BlockMaterialMapping.class)
 public class BlockMaterialMappingMixin {
     @Inject(method = "createBlockStateIdMap", at = @At("RETURN"))
-    private static void ibc$addCompatBlockIds(Int2ObjectLinkedOpenHashMap<List<BlockEntry>> blockPropertiesMap, Int2ObjectLinkedOpenHashMap<List<TagEntry>> tagPropertiesMap, CallbackInfoReturnable<Object2IntMap<BlockState>> cir) {
+    private static void irisblockcompat$addCompatBlockIds(Int2ObjectLinkedOpenHashMap<List<BlockEntry>> blockPropertiesMap, Int2ObjectLinkedOpenHashMap<List<TagEntry>> tagPropertiesMap, CallbackInfoReturnable<Object2IntMap<BlockState>> cir) {
         IrisBlockCompat.addCompatBlockIds(cir.getReturnValue());
     }
 }

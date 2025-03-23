@@ -3,11 +3,12 @@
   "package": "com.judiraal.irisblockcompat.mixin",
   "compatibilityLevel": "JAVA_21",
   "refmap": "irisblockcompat.mixin-refmap.json",
-  "mixins": [
+  "client": [
     "BlockMaterialMappingMixin",
+    "IrisConfigMixin",
     "IrisMixin"
   ],
   "minVersion": "0.8",
-  "client": [
+  "mixins": [
   ]
 }
