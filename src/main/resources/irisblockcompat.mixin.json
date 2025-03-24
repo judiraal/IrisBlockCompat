@@ -6,7 +6,8 @@
   "client": [
     "BlockMaterialMappingMixin",
     "IrisConfigMixin",
-    "IrisMixin"
+    "IrisMixin",
+    "ShaderPackScreenMixin"
   ],
   "minVersion": "0.8",
   "mixins": [

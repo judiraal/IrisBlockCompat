@@ -1,8 +1,16 @@
 package com.judiraal.irisblockcompat;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.judiraal.irisblockcompat.util.DimensionSettings;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.JsonOps;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -12,14 +20,22 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.config.ModConfigEvent;
+import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.neoforge.common.util.JsonUtils;
 import net.neoforged.neoforge.common.util.Lazy;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 import static net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF;
 
+@EventBusSubscriber(modid = IrisBlockCompat.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public class IrisBlockCompatConfig {
     public static final IrisBlockCompatConfig CONFIG;
     static final ModConfigSpec SPEC;
@@ -31,14 +47,17 @@ public class IrisBlockCompatConfig {
         SPEC = pair.getRight();
     }
 
+    private static final Path SETTINGS_CONFIG = FMLPaths.CONFIGDIR.get().resolve("irisblockcompat-dims.json");
+    private static final Codec<Map<ResourceLocation, DimensionSettings>> SETTINGS_CODEC = Codec.unboundedMap(ResourceLocation.CODEC, DimensionSettings.CODEC);
+
     public static ModConfigSpec.ConfigValue<List<? extends String>> wavingBlocks;
     public static ModConfigSpec.ConfigValue<List<? extends String>> leavesBlocks;
     public static ModConfigSpec.ConfigValue<List<? extends String>> cropsBlocks;
     public static ModConfigSpec.ConfigValue<List<? extends String>> excludeBlocks;
     public static ModConfigSpec.ConfigValue<List<? extends String>> disabledDimensions;
+    public static ModConfigSpec.BooleanValue enablePerDimensionShaders;
     public static Lazy<Object2IntMap<BlockState>> compatBlockStates;
-    public static Map<ResourceLocation, String> dimensionShaderPacks = ImmutableMap.of(
-            ResourceLocation.parse("minecraft:the_nether"), "superDuperVanilla.zip");
+    public static Map<ResourceLocation, DimensionSettings> dimensionShaderPacks = ImmutableMap.of();
 
     private IrisBlockCompatConfig(final ModConfigSpec.Builder builder) {
         wavingBlocks = builder.comment("List of blocks and/or block tags that will be included as waving grass-like.")
@@ -54,13 +73,58 @@ public class IrisBlockCompatConfig {
         disabledDimensions = builder.comment("List of dimensions where shaders should not be used.")
                 .defineList("disabledDimensions", () -> Arrays.asList(
                         "stellaris:moon", "stellaris:mars", "stellaris:venus", "stellaris:mercury"), () -> "", value -> true);
+        enablePerDimensionShaders = builder.comment("Enable optionally specifying different shader settings per dimension.")
+                .define("enablePerDimensionShaders", true);
         compatBlockStates = Lazy.of(this::buildCompatBlockStates);
 
         builder.build();
     }
 
-    public static Optional<String> getDimensionShader(ResourceLocation location) {
-        return Optional.ofNullable(dimensionShaderPacks.get(location));
+    @SubscribeEvent
+    static void onLoad(final ModConfigEvent event) {
+        loadDimensionSettings();
+    }
+
+    public static Optional<DimensionSettings> getDimensionSettings() {
+        var level = Minecraft.getInstance().level;
+        if (level == null) return Optional.empty();
+        return getDimensionSettings(level.dimension().location());
+    }
+
+    public static Optional<DimensionSettings> getDimensionSettings(ResourceLocation dimensionId) {
+        if (!enablePerDimensionShaders.get()) return Optional.empty();
+        return Optional.ofNullable(dimensionShaderPacks.get(dimensionId));
+    }
+
+    public static synchronized void removeDimensionSettings(ResourceLocation dimensionId) {
+        if (!dimensionShaderPacks.containsKey(dimensionId)) return;
+        dimensionShaderPacks = ImmutableMap.copyOf(Maps.filterKeys(dimensionShaderPacks, k -> !dimensionId.equals(k)));
+        saveDimensionSettings();
+    }
+
+    public static synchronized void setDimensionSettings(ResourceLocation dimensionId, boolean enabled, String shaderPackName) {
+        var map = new LinkedHashMap<>(dimensionShaderPacks);
+        map.put(dimensionId, new DimensionSettings(enabled, shaderPackName));
+        dimensionShaderPacks = ImmutableMap.copyOf(map);
+        saveDimensionSettings();
+    }
+
+    private static void saveDimensionSettings() {
+        try {
+            var json = SETTINGS_CODEC.encodeStart(JsonOps.INSTANCE, dimensionShaderPacks)
+                .resultOrPartial(error -> IrisBlockCompat.LOGGER.info("Encoding error: " + error))
+                .orElse(null);
+            if (json != null) Files.writeString(SETTINGS_CONFIG, new GsonBuilder().setPrettyPrinting().create().toJson(json));
+        } catch (Exception ignored) {}
+    }
+
+    private static void loadDimensionSettings() {
+        if (Files.exists(SETTINGS_CONFIG)) try {
+            var json = new Gson().fromJson(Files.readString(SETTINGS_CONFIG), JsonElement.class);
+            dimensionShaderPacks = ImmutableMap.copyOf(SETTINGS_CODEC.parse(JsonOps.INSTANCE, json)
+                    .resultOrPartial(error -> IrisBlockCompat.LOGGER.info("Decoding error: " + error))
+                    .orElse(ImmutableMap.of()));
+        } catch (Exception ignored) {}
     }
 
     private <T extends String> List<Block> blockListToBlocks(List<T> blockList) {
